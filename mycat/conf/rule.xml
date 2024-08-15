@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mycat:rule SYSTEM "rule.dtd">
+<mycat:rule xmlns:mycat="http://io.mycat/">
+    <!-- name: 规则名称 -->
+    <tableRule name="mod-long">
+        <rule>
+            <!-- columns: 标识将要分片的表字段 -->
+            <columns>id</columns>
+            <!-- algorithm: 指定分片函数与function的对应关系 -->
+            <algorithm>mod-long</algorithm>
+        </rule>
+    </tableRule>
+
+    <!-- 分片对应函数 -->
+    <!-- name: 对应tableRule的algorithm标签 -->
+    <!-- class: 指定该分片算法对应的类 -->
+    <function name="mod-long" class="io.mycat.route.function.PartitionByMod">
+        <!-- count: 数据节点的数量 -->
+        <property name="count">3</property>
+    </function>
+</mycat:rule>

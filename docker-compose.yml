@@ -1,0 +1,141 @@
+version: '3.9'
+services:
+  mysql-master01:
+    container_name: mysql-master01
+    hostname: mysql-master01
+    image: mysql:5.7
+    ports:
+      - 3306:3306
+    volumes:
+      - ./master01/data:/var/lib/mysql
+      - ./master01/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./master01/init_db/:/docker-entrypoint-initdb.d/
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: shopping
+      character-set-server: utf8mb4
+      collation-server: utf8mb4_general_ci
+    restart: unless-stopped
+    privileged: true
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost", "--silent" ]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    networks:
+      mysql:
+        ipv4_address: 172.16.0.101
+
+  mysql-master02:
+    container_name: mysql-master02
+    hostname: mysql-master02
+    image: mysql:5.7
+    ports:
+      - 3307:3306
+    volumes:
+      - ./master02/data:/var/lib/mysql
+      - ./master02/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./master02/init_db/:/docker-entrypoint-initdb.d/
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: shopping
+      character-set-server: utf8mb4
+      collation-server: utf8mb4_general_ci
+    restart: unless-stopped
+    privileged: true
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost", "--silent" ]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    networks:
+      mysql:
+        ipv4_address: 172.16.0.102
+
+  mysql-slave01:
+    container_name: mysql-slave01
+    hostname: mysql-slave01
+    image: mysql:5.7
+    ports:
+      - 3308:3306
+    volumes:
+      - ./slave01/data:/var/lib/mysql
+      - ./slave01/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./slave01/init_db/:/docker-entrypoint-initdb.d/
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: shopping
+      character-set-server: utf8mb4
+      collation-server: utf8mb4_general_ci
+    restart: unless-stopped
+    privileged: true
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost", "--silent" ]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    networks:
+      mysql:
+        ipv4_address: 172.16.0.103
+
+  mysql-slave02:
+    container_name: mysql-slave02
+    hostname: mysql-slave02
+    image: mysql:5.7
+    ports:
+      - 3309:3306
+    volumes:
+      - ./slave02/data:/var/lib/mysql
+      - ./slave02/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./slave02/init_db/:/docker-entrypoint-initdb.d/
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: shopping
+      character-set-server: utf8mb4
+      collation-server: utf8mb4_general_ci
+    restart: unless-stopped
+    privileged: true
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost", "--silent" ]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    networks:
+      mysql:
+        ipv4_address: 172.16.0.104
+
+  mycat:
+    container_name: mycat
+    build: ./mycat
+    restart: always
+    volumes:
+      - ./mycat/conf/server.xml:/home/mycat/conf/server.xml
+      - ./mycat/conf/schema.xml:/home/mycat/conf/schema.xml
+      - ./mycat/conf/rule.xml:/home/mycat/conf/rule.xml
+    ports:
+      - "8066:8066"
+      - "9066:9066"
+    links:
+      - mysql-master01
+      - mysql-master02
+      - mysql-slave01
+      - mysql-slave02
+    networks:
+      mysql:
+        ipv4_address: 172.16.0.10
+
+networks:
+  mysql:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.16.0.0/24

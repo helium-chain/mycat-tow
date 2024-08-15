@@ -1,0 +1,98 @@
+<?xml version="1.0"?>
+<!DOCTYPE mycat:schema SYSTEM "schema.dtd">
+<mycat:schema xmlns:mycat="http://io.mycat/">
+    <!-- 逻辑库 -->
+    <!-- name: 逻辑库名字 -->
+    <!-- checkSQLschema: 
+        当设置为true时，比如发送一条sql:select * from mycat_order.t_order，那么MyCat会自动去掉mycat_order逻辑库名字前缀，把sql变为：select * from t_order, 这样有效避免报表或视图不存在错误。
+        如果使用select * from test.t_order ，sql语句中所带的逻辑库名字跟schema标签中的name不一致的话，MyCat不会自动去掉逻辑库名字前缀，如果逻辑库不存在，仍然会报错。
+    -->
+    <!-- sqlMaxLimit:  如果每次执行的sql语句后面没有跟上limit xx关键字的话，MyCat会自动在sql语句的后面拼上limit 100 -->
+    <!-- dataNode: 用于指定没有分配分片节点的那些表的默认数据节点 -->
+    <schema name="shopping" checkSQLschema="false" sqlMaxLimit="100" dataNode="dn1">
+        <!-- 逻辑表，以下都没有配置分片规则rule，因为垂直分表不需要它 -->
+        <!-- name: 逻辑表的名字，同一个逻辑库schema中的逻辑表的名称应该唯一 -->
+        <!-- dataNode: 配置逻辑表分布的数据节点，名字需要与dataNode标签的name对应上 -->
+        <!-- rule: 配置逻辑表的分片规则,需要在rule.xml中声明的规则名字对应上 -->
+        <!-- ruleRequired: 指定分片规则是否必须，如果为true,但是没有指定rule，程序会报错 -->
+        <!-- primaryKey: 指定逻辑表对应真实表的主键 -->
+        <!-- type: 指定该逻辑表是全局表还是普通逻辑表。type="global"表示全局表 -->
+        <!-- autoIncrement: 指定是否自增长主键 -->
+        <!-- needAddLimit: 指定逻辑表是否在查询的时候自动添加limit去限制返回的结果集记录数，默认为true,如果语句中已经包含了limit关键字，则不会重复添加 -->
+        <!--<table name="tb_user" primaryKey="id" />-->
+
+        <!--
+        <table name="t_order"  dataNode="dn1,dn2" rule="mod-long">
+            # 定义E-R分片的子表，通过标签上的属性与父表进行关联
+            #   name：子表的名称t_order_detail
+            #   primaryKey：子表的主键
+            #   joinKey：新增子表记录的时候，会根据该值查询父表在哪个分片节点上。（子表中字段的名称order_i
+            #   parentKey属性：与父表建立关联关系的列，结合joinKey确定好子表记录存放的分片节点，插入子表记录时直接插入到该分片节点上。（父表中字段名称order_id）
+            #   needAddLimit属性： 指定逻辑表是否在查询的时候自动添加limit去限制返回的结果集记录数，默认为true,如果语句中已经包含了limit关键字，则不会重复添加
+            <childTable name="t_order_detail" primaryKey="od_id" joinKey="order_id" parentKey="order_id"></childTable>
+        </table>
+        -->
+    </schema>
+
+    <!-- 数据节点 -->
+    <!-- name: 指定分片节点的名称，与声明逻辑表table标签中的dataNode名字对应上 -->
+    <!-- dataHost: 指定分片节点所在的节点主机（数据库实例），与dataHost标签声明的name对应 -->
+    <!-- database: 真实数据库名称 -->
+    <dataNode name="dn1" dataHost="dhost1" database="shopping" />
+
+
+    <!-- 具体数据库实例 -->
+    <dataHost name="dhost1" maxCon="1000" minCon="10" balance="1"
+        writeType="0" dbType="mysql" dbDriver="native" switchType="1" slaveThreshold="100">
+        <!--心跳检测 -->
+        <heartbeat>select user()</heartbeat>
+        <!-- 写服务器，如果要配置读写，添加readHost标签即可 -->
+        <writeHost host="M1" url="172.16.0.101:3306" user="root" password="123456">
+            <!-- 读服务器 -->
+            <readHost host="S1" url="172.16.0.103:3306" user="root" password="123456" />
+        </writeHost>
+
+        <!-- 写服务器，如果要配置读写，添加readHost标签即可 -->
+        <writeHost host="M2" url="172.16.0.102:3306" user="root" password="123456">
+            <!-- 读服务器 -->
+            <readHost host="S2" url="172.16.0.104:3306" user="root" password="123456" />
+        </writeHost>
+    </dataHost>
+
+    <!-- name: 指定分片主机的名称，供dataNode标签使用 -->
+    <!-- maxCon: 指定读写实例的连接池的最大连接数量 -->
+    <!-- minCon: 指定读写实例的连接池的最小连接数量，初始化连接池的大小 -->
+    <!-- balance: 指定负载均衡的类型
+            balance = “0” : 不开启读写分离，所有的读请求都发送到可用的writeHost写节点上（不会发readHost）
+            balance = “1” : 全部的readHost与stand by writeHost参与select语句的负载均衡，
+            balance = “2” : 读操作会随机发往writeHost以及 readHost，理论上实现的是负载均衡
+            balance = “3” : 配置了readHost时读操作会随机发往readHost（不会发writeHost），而没有配置readHost时读操作会发往第一个writeHost。
+    -->
+    <!-- writeType:  
+            writeType="0": 所有写操作发送到配置的第一个writeHost，当第一个writeHost宕机时，切换到第二个writeHost，重新启动后以切换后的为准，切换记录在配置文件：dnindex.properties中
+            writeType="1": 所有写操作都随发送到配置的writeHost
+    -->
+    <!-- dbType: 指定后端数据库类型，支持mysql、oracle等 -->
+    <!-- dbDriver: 指定后端数据库连接驱动信息，支持native和jdbc -->
+    <!-- switchType: 指定切换方式 
+            switchType = -1：不自动切换
+            switchType = 1：自动切换（默认）
+            switchType = 2：基于MySql主从同步的状态来决定是否切换，心跳语句: show slave status
+            switchType = 3: 基于mysql galary cluster的切换机制，心跳语句： show status like 'wsrep%'
+    -->
+    <!-- slaveThreshold:  -->
+    <!--<dataHost name="dhost3" maxCon="1000" minCon="10" balance="0"
+        writeType="0" dbType="mysql" dbDriver="native" switchType="1" slaveThreshold="100">-->
+        <!--心跳检测，指定后端数据库进行心跳检查的语句 -->
+        <!--<heartbeat>select user()</heartbeat>-->
+        <!-- 写服务器，如果要配置读写，添加readHost标签即可 -->
+        <!-- host: 用于标识不同实例，一般 writeHost 我们使用M1，readHost 我们用S1 -->
+        <!-- url: 后端实例连接地址，如果是使用 native 的 dbDriver，则一般为 address:port 这种形式,用 JDBC 或其他的 dbDriver，则需要特殊指定，使用 JDBC 时则可以这么写：jdbc:mysql://localhost:3306/ -->
+        <!-- user: 后端存储实例需要的用户名 -->
+        <!-- password: 后端存储实例需要的密码 -->
+        <!-- weight: 权重 配置在 readhost 中作为读节点的权重 -->
+        <!-- usingDecrypt: 是否对密码加密默认 0 否 如需要开启配置 1，同时使用加密程序对密码加密 -->
+        <!--<writeHost host="M3" url="172.16.0.103:3306" user="root" password="123456">
+        </writeHost>-->
+    <!--</dataHost>-->
+</mycat:schema>
